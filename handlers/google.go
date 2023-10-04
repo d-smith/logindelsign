@@ -34,7 +34,10 @@ func GenerateToken(ttl time.Duration, payload interface{}, secretJWTKey string) 
 	now := time.Now().UTC()
 	claims := token.Claims.(jwt.MapClaims)
 
-	claims["sub"] = payload
+	tokenFields := payload.(*TokenFields)
+
+	claims["sub"] = tokenFields.Id
+	claims["email"] = tokenFields.Email
 	claims["exp"] = now.Add(ttl).Unix()
 	claims["iat"] = now.Unix()
 	claims["nbf"] = now.Unix()
@@ -119,6 +122,11 @@ type ClientID struct {
 	Id string `json:"id"`
 }
 
+type TokenFields struct {
+	Id    string `json:"id"`
+	Email string `json:"email"`
+}
+
 func getUserDataFromGoogle(code string) ([]byte, error) {
 	// Use code to get token and get user info from Google.
 
@@ -138,13 +146,13 @@ func getUserDataFromGoogle(code string) ([]byte, error) {
 	}
 	fmt.Printf("response: %s\n", contents)
 
-	var clientID ClientID
-	err = json.Unmarshal(contents, &clientID)
+	var tokenFields TokenFields
+	err = json.Unmarshal(contents, &tokenFields)
 	if err != nil {
 		return nil, fmt.Errorf("failed unmarshal response: %s", err.Error())
 	}
 
-	jwtToken, err := GenerateToken(20*time.Minute, clientID.Id, "secret")
+	jwtToken, err := GenerateToken(8*time.Hour, &tokenFields, "secret")
 	if err != nil {
 		return nil, fmt.Errorf("failed generate token: %s", err.Error())
 	}
